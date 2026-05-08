@@ -12,7 +12,6 @@ El proyecto se entrega en tres hitos. Este repositorio cubre actualmente el **Hi
 | Hito 2: Segundo Avance | 12 | Arquitectura del compilador, plan de validación, ~50% de la implementación. |
 | Hito 3: Trabajo Final | 15 | Front end y back end completos, generación de código intermedio con LLVM, validación y conclusiones. |
 
-El enunciado oficial del trabajo se encuentra en [`docs/enunciado-tp-2026-1.pdf`](docs/enunciado-tp-2026-1.pdf). El borrador del informe escrito por el equipo (fuente Word) se conserva en [`docs/informe-fuente-tp.docx`](docs/informe-fuente-tp.docx).
 
 ## 2. Problemática y motivación
 
