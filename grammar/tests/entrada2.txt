@@ -1,0 +1,4 @@
+-- WHERE con AND/OR y precedencia: 'a AND b OR c' se interpreta como '(a AND b) OR c'
+SELECT nombre, edad, pais
+FROM "clientes.csv"
+WHERE edad >= 18 AND pais == "Peru" OR pais == "Chile";

@@ -1,0 +1,2 @@
+-- Error: '=' no es un operador válido (la gramática requiere '==')
+SELECT nombre FROM "clientes.csv" WHERE edad = 18;

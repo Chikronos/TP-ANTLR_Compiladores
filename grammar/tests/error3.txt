@@ -1,0 +1,2 @@
+-- Error: ORDER sin BY (el parser exige la secuencia 'ORDER BY')
+SELECT nombre FROM "clientes.csv" ORDER edad ASC;

@@ -1,0 +1,8 @@
+-- Múltiples consultas en un mismo archivo, paréntesis y palabras clave en minúscula/mayúscula mezcladas
+select id, total from "ventas.csv" where total > 1000.50;
+
+SELECT producto
+FROM "ventas.csv"
+WHERE (total >= 100 AND total <= 500) OR producto != "muestra"
+ORDER BY producto
+LIMIT 25;

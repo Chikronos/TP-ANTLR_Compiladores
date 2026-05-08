@@ -1,0 +1,2 @@
+-- Error: falta el ';' al final de la consulta
+SELECT nombre FROM "clientes.csv"

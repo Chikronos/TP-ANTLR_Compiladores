@@ -1,0 +1,2 @@
+-- Error: identificador inválido (no puede comenzar con dígito)
+SELECT 1columna FROM "clientes.csv";
