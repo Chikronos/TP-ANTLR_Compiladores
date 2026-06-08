@@ -1,0 +1,6 @@
+# artefactos generados por ANTLR
+grammar/QueryBit*.py
+grammar/QueryBit*.tokens
+grammar/QueryBit*.interp
+# mantener el archivo fuente de la gramática
+!grammar/QueryBit.g4
