@@ -146,7 +146,7 @@ cd grammar
 
 for f in tests/entrada*.txt tests/error*.txt; do
     echo "===== $(basename "$f") ====="
-    python main.py "$f"
+    python3 main.py "$f"
 done
 ```
 
@@ -203,7 +203,7 @@ cd grammar
 
 gci tests\entrada*.txt, tests\error*.txt | % {
     Write-Host "===== $($_.Name) ====="
-    python main.py $_.FullName
+    python3 main.py $_.FullName
 }
 ```
 
@@ -228,8 +228,8 @@ java -jar C:\ruta\a\antlr-4.13.1-complete.jar -Dlanguage=Python3 QueryBit.g4
 ### 6.3. Ejecutar el driver
 
 ```bash
-python main.py tests/entrada1.txt    # consulta válida; imprime tokens, árbol y resumen
-python main.py tests/error1.txt      # consulta inválida; el resumen reporta errores
+python3 main.py tests/entrada1.txt    # consulta válida; imprime tokens, árbol y resumen
+python3 main.py tests/error1.txt      # consulta inválida; el resumen reporta errores
 ```
 
 Por cada archivo procesado, el driver emite tres bloques:
@@ -263,34 +263,34 @@ Ejecutar primero la generación del lexer y parser (sección 6.2), luego, desde 
 # ----- entradas válidas -----
 
 # entrada0: consulta verbatim del informe fuente
-python main.py tests/entrada0.txt
+python3 main.py tests/entrada0.txt
 
 # entrada1: SELECT * mínimo + comentario '--'
-python main.py tests/entrada1.txt
+python3 main.py tests/entrada1.txt
 
 # entrada2: WHERE con AND/OR (precedencia AND > OR)
-python main.py tests/entrada2.txt
+python3 main.py tests/entrada2.txt
 
 # entrada3: ORDER BY multi-columna + LIMIT
-python main.py tests/entrada3.txt
+python3 main.py tests/entrada3.txt
 
 # entrada4: múltiples consultas, paréntesis, mayúsculas/minúsculas mezcladas
-python main.py tests/entrada4.txt
+python3 main.py tests/entrada4.txt
 
 
 # ----- entradas inválidas (deben reportar error de parseo) -----
 
 # error1: falta ';' al cierre
-python main.py tests/error1.txt
+python3 main.py tests/error1.txt
 
 # error2: operador '=' no aceptado (la gramática exige '==')
-python main.py tests/error2.txt
+python3 main.py tests/error2.txt
 
 # error3: 'ORDER' sin 'BY'
-python main.py tests/error3.txt
+python3 main.py tests/error3.txt
 
 # error4: identificador que comienza con dígito
-python main.py tests/error4.txt
+python3 main.py tests/error4.txt
 
 ```
 
@@ -300,7 +300,7 @@ Para una ejecución secuencial de todos los casos:
 # Linux / macOS / Git Bash
 for f in tests/entrada*.txt tests/error*.txt; do
   echo "===== $f ====="
-  python main.py "$f"
+  python3 main.py "$f"
 done
 ```
 
@@ -308,7 +308,7 @@ done
 # PowerShell
 gci tests\entrada*.txt, tests\error*.txt | % {
   Write-Host "===== $($_.Name) ====="
-  python main.py $_.FullName
+  python3 main.py $_.FullName
 }
 ```
 
