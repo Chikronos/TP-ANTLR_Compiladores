@@ -28,15 +28,15 @@ def main():
     lexer  = QueryBitLexer(input_stream)
     stream = CommonTokenStream(lexer)
     stream.fill()
-    imprimir_tokens(stream)
+    ##imprimir_tokens(stream)
 
     # 2) Parser: construye el arbol sintactico desde la regla 'program'.
     parser = QueryBitParser(stream)
     tree   = parser.program()
 
-    print("Arbol sintactico:")
-    print(f"  {tree.toStringTree(recog=parser)}")
-    print()
+    ##print("Arbol sintactico:")
+    ##print(f"  {tree.toStringTree(recog=parser)}")
+    ##print()
 
     # 3) Resumen: numero de consultas reconocidas y de errores sintacticos.
     n_errors  = parser.getNumberOfSyntaxErrors()
