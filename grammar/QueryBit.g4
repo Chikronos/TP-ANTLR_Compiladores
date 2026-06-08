@@ -3,34 +3,43 @@ grammar QueryBit;
 // ========== REGLAS DEL PARSER ==========
 
 // ---------- PUNTO DE ENTRADA
-//  Una o más consultas terminadas en ';'
-program : query+ EOF ;
+//  queryList reemplaza query+ con recursión explícita + ε
+program   : query queryList EOF ;
+queryList : query queryList | ;
 
 // ---------- CONSULTA
 //  SELECT <columnas> FROM <tabla>
 //    [ WHERE   <condicion>      ]
 //    [ ORDER BY <lista_orden>   ]
 //    [ LIMIT   <numero>         ] ;
+//
+//  Las cláusulas opcionales se expresan como producciones ε
+//  (optWhere, optOrder, optLimit) en lugar del operador '?'
+//  de EBNF, para quedar alineadas con la teoría de CFGs.
 query
     : SELECT columnList
       FROM source
-      whereClause?
-      orderClause?
-      limitClause?
+      optWhere
+      optOrder
+      optLimit
       SEMI
     ;
 
-// ---------- CLÁUSULAS OPCIONALES
-whereClause : WHERE condition ;
-orderClause : ORDER BY orderList ;
-limitClause : LIMIT NUMBER ;
+// ---------- CLÁUSULAS OPCIONALES (producciones ε)
+//  Cada regla tiene dos alternativas: la cláusula presente o vacía (ε).
+//  Esto es la representación directa en CFG de un elemento opcional.
+optWhere : WHERE condition | ;
+optOrder : ORDER BY orderList | ;
+optLimit : LIMIT NUMBER       | ;
 
 // ---------- COLUMNAS
 //  '*'  o  col1, col2, ...
+//  columnRest reemplaza (COMMA column)* con recursión explícita + ε
 columnList
     : STAR
-    | column (COMMA column)*
+    | column columnRest
     ;
+columnRest : COMMA column columnRest | ;
 
 column : ID ;
 
@@ -48,8 +57,13 @@ source : STRING | ID ;
 //  como '(a AND b) OR c', alineado con la semántica de SQL.
 condition : orCondition ;
 
-orCondition  : andCondition (OR  andCondition)* ;
-andCondition : primaryCondition (AND primaryCondition)* ;
+//  orRest  reemplaza (OR  andCondition)*  con recursión explícita + ε
+//  andRest reemplaza (AND primaryCondition)* con recursión explícita + ε
+orCondition  : andCondition orRest ;
+orRest       : OR andCondition orRest | ;
+
+andCondition : primaryCondition andRest ;
+andRest      : AND primaryCondition andRest | ;
 
 primaryCondition
     : LPAREN condition RPAREN
@@ -66,8 +80,14 @@ value : NUMBER | STRING ;
 
 // ---------- ORDEN
 //  ORDER BY col1 ASC, col2 DESC
-orderList : orderItem (COMMA orderItem)* ;
-orderItem : ID (ASC | DESC)? ;
+//  orderRest reemplaza (COMMA orderItem)* con recursión explícita + ε
+orderList : orderItem orderRest ;
+orderRest : COMMA orderItem orderRest | ;
+
+//  La dirección es opcional: se expresa con producción ε
+//  en lugar de (ASC | DESC)?
+orderItem : ID orderDir ;
+orderDir  : ASC | DESC | ;
 
 
 // ========== REGLAS DEL LEXER ==========
@@ -104,8 +124,12 @@ LPAREN  : '(' ;
 RPAREN  : ')' ;
 
 // ---------- LITERALES
-//  NUMBER admite enteros y decimales (3, 3.14).
-NUMBER  : [0-9]+ ('.' [0-9]+)? ;
+//  NUMBER con dos alternativas explícitas en lugar de ('.' [0-9]+)?
+//  DECIMAL va ANTES que ENTERO para que '3.14' no se tokenice como '3'
+fragment DIGITOS : [0-9]+ ;
+NUMBER  : DIGITOS '.' DIGITOS
+        | DIGITOS
+        ;
 STRING  : '"' ~["\r\n]* '"' ;
 
 // ---------- IDENTIFICADORES
