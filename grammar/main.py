@@ -16,6 +16,17 @@ def imprimir_tokens(stream):
     print()
 
 
+def contar_queries(program_ctx):
+    if program_ctx is None:
+        return 0
+    count = 1
+    lista = program_ctx.queryList()
+    while lista is not None and lista.query() is not None:
+        count += 1
+        lista = lista.queryList()
+    return count
+
+
 def main():
     if len(sys.argv) != 2:
         print("Uso: python main.py <archivo.qb>")
@@ -40,7 +51,7 @@ def main():
 
     # 3) Resumen: numero de consultas reconocidas y de errores sintacticos.
     n_errors  = parser.getNumberOfSyntaxErrors()
-    n_queries = len(tree.query()) if tree is not None else 0
+    n_queries = contar_queries(tree) if tree is not None else 0
     print("Resumen:")
     print(f"  Consultas reconocidas: {n_queries}")
     print(f"  Errores sintacticos:   {n_errors}")
