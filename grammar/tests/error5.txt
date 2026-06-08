@@ -1,0 +1,2 @@
+/* Comentario de bloque que nunca se cierra
+SELECT nombre FROM "clientes.csv";

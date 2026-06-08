@@ -1,0 +1,7 @@
+/* Consulta con comentarios de bloque
+   que abarcan varias líneas y conviven
+   con comentarios de una línea. */
+SELECT nombre, edad /* columnas a proyectar */
+FROM "clientes.csv"
+WHERE edad >= 18 /* mayores de edad */ AND pais == "Peru";
+-- comentario final de una línea

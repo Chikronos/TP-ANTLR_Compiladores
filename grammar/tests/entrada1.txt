@@ -1,2 +1,2 @@
--- Consulta básica: selección de todas las columnas
-SELECT * FROM "clientes.csv";
+-- Consulta avanzada con filtros
+SELECT nombre, edad FROM "clientes.csv" WHERE edad >= 18 AND pais == "Peru" ORDER BY edad DESC LIMIT 10;
