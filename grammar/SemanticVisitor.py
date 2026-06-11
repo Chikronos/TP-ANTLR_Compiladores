@@ -7,7 +7,7 @@ class SemanticVisitor(QueryBitVisitor):
         self.errores = []
 
     def _error(self, linea, mensaje):
-        self.errores.append(f"  Error semantico [linea {linea}]: {mensaje}")
+        self.errores.append((linea, mensaje))
 
     # ---------- helpers ----------
 

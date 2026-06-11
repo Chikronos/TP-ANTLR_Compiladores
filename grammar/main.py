@@ -1,20 +1,18 @@
 import sys
 from antlr4 import CommonTokenStream, FileStream, Token
+from antlr4.error.ErrorListener import ErrorListener
 from QueryBitLexer import QueryBitLexer
 from QueryBitParser import QueryBitParser
 from SemanticVisitor import SemanticVisitor
 
 
-def imprimir_tokens(stream):
-    print("Tokens:")
-    print(f"  {'TIPO':<14} TEXTO")
-    print(f"  {'-'*14} {'-'*30}")
-    for token in stream.tokens:
-        if token.type == Token.EOF:
-            continue
-        nombre = QueryBitLexer.symbolicNames[token.type]
-        print(f"  {nombre:<14} {repr(token.text)}")
-    print()
+class _ErrorCollector(ErrorListener):
+    def __init__(self):
+        super().__init__()
+        self.errores = []
+
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+        self.errores.append((line, column, msg))
 
 
 def contar_queries(program_ctx):
@@ -36,44 +34,51 @@ def main():
     archivo = sys.argv[1]
     input_stream = FileStream(archivo, encoding='utf-8')
 
+    collector = _ErrorCollector()
+
     # 1) Lexer: produce los tokens.
-    lexer  = QueryBitLexer(input_stream)
+    lexer = QueryBitLexer(input_stream)
+    lexer.removeErrorListeners()
+    lexer.addErrorListener(collector)
     stream = CommonTokenStream(lexer)
     stream.fill()
-    ##imprimir_tokens(stream)
 
     # 2) Parser: construye el arbol sintactico desde la regla 'program'.
     parser = QueryBitParser(stream)
-    tree   = parser.program()
+    parser.removeErrorListeners()
+    parser.addErrorListener(collector)
+    tree = parser.program()
 
-    ##print("Arbol sintactico:")
-    ##print(f"  {tree.toStringTree(recog=parser)}")
-    ##print()
+    errores_sin = collector.errores
+    n_queries   = contar_queries(tree) if tree is not None else 0
 
-    # 3) Resumen: numero de consultas reconocidas y de errores sintacticos.
-    n_sintacticos = parser.getNumberOfSyntaxErrors()
-    n_queries     = contar_queries(tree) if tree is not None else 0
-
-    # 4) Analisis semantico (solo si no hay errores sintacticos).
+    # 3) Analisis semantico (solo si no hay errores sintacticos).
     errores_sem = []
-    if n_sintacticos == 0 and tree is not None:
+    if not errores_sin and tree is not None:
         visitor = SemanticVisitor()
         errores_sem = visitor.analizar(tree)
 
-    print("Resumen:")
-    print(f"  Consultas reconocidas: {n_queries}")
-    print(f"  Errores sintacticos:   {n_sintacticos}")
-    print(f"  Errores semanticos:    {len(errores_sem)}")
-
-    if errores_sem:
-        print()
-        print("Errores semanticos encontrados:")
-        for e in errores_sem:
-            print(e)
+    # 4) Output.
+    if errores_sin:
+        print(f"Errores sintácticos ({len(errores_sin)}):")
+        for linea, col, msg in errores_sin:
+            print(f"  [linea {linea}, col {col}] {msg}")
+    else:
+        print("Errores sintácticos:   ninguno")
 
     print()
-    ok = n_sintacticos == 0 and len(errores_sem) == 0
-    print(f"  Estado: {'OK' if ok else 'con errores'}")
+
+    if errores_sem:
+        print(f"Errores semánticos ({len(errores_sem)}):")
+        for linea, msg in errores_sem:
+            print(f"  [linea {linea}] {msg}")
+    else:
+        print("Errores semánticos:    ninguno")
+
+    total = len(errores_sin) + len(errores_sem)
+    ok    = total == 0
+    print()
+    print(f"Consultas: {n_queries}  |  Total errores: {total}  |  Estado: {'OK' if ok else 'con errores'}")
 
     if not ok:
         sys.exit(1)
