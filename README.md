@@ -1,16 +1,16 @@
 # TP-ANTLR\_Compiladores: QueryBit
 
-Repositorio del Trabajo Parcial y Final del curso **Teoría de Compiladores (1ACC0236)**, UPC, ciclo 2026-1. Contiene el diseño y la implementación progresiva de **QueryBit**, un lenguaje de dominio específico (DSL) inspirado en SQL para consultar y filtrar archivos estructurados (`.csv`).
+Repositorio del Trabajo Parcial y Final del curso **Teoría de Compiladores (1ACC0236)**, UPC, ciclo 2026-1. Contiene el diseño e implementación progresiva de **QueryBit**, un lenguaje de dominio específico (DSL) inspirado en SQL para consultar y filtrar archivos estructurados (`.csv`).
 
 ## 1. Contexto del proyecto
 
-El proyecto se entrega en tres hitos. Este repositorio cubre actualmente el **Hito 1: Trabajo Parcial**.
+El proyecto se entrega en tres hitos. Este repositorio implementa el front-end del compilador (lexer + parser) y el analizador semántico.
 
 | Hito | Semana | Alcance |
 |------|--------|---------|
-| Hito 1: Trabajo Parcial | 7 | Gramática en ANTLR4, archivos `.g4`, driver mínimo, demo de la gramática. |
-| Hito 2: Segundo Avance | 12 | Arquitectura del compilador, plan de validación, ~50% de la implementación. |
-| Hito 3: Trabajo Final | 15 | Front end y back end completos, generación de código intermedio con LLVM, validación y conclusiones. |
+| Hito 1: Trabajo Parcial | 7 | gramática ANTLR4, archivos `.g4`, driver mínimo, demo de la gramática. |
+| Hito 2: Segundo Avance | 12 | Arquitectura del compilador, analizador semántico, ~50% de la implementación. |
+| Hito 3: Trabajo Final | 15 | Frontend y backend completos, generación de código intermedio con LLVM, válidación y conclusiones. |
 
 
 ## 2. Problemática y motivación
@@ -20,43 +20,47 @@ Muchas tareas de análisis de datos requieren filtrar y proyectar columnas sobre
 ## 3. Objetivos
 
 ### 3.1. Objetivo general
-Diseñar e implementar QueryBit, un DSL para consultas y filtrado condicional sobre archivos estructurados, aplicando un flujo de compilación que incluya gramática en ANTLR4, análisis sintáctico, validación semántica mediante tabla de símbolos y generación de código intermedio con LLVM.
+Diseñar e implementar QueryBit, un DSL para consultas y filtrado condicional sobre archivos estructurados, aplicando un flujo de compilación que incluya gramática en ANTLR4, análisis sintáctico, válidación semántica y generación de código intermedio con LLVM.
 
 ### 3.2. Objetivos específicos
 - Definir una sintaxis declarativa inspirada en SQL para operaciones `FROM`, `SELECT`, `WHERE`, `ORDER BY` y `LIMIT`.
 - Construir una gramática en ANTLR4 que reconozca correctamente las consultas válidas de QueryBit y reporte errores en las inválidas.
-- Implementar, en hitos posteriores, una tabla de símbolos para validar el uso de columnas y la generación de código intermedio mediante LLVM.
+- Implementar un analizador semántico que detecte errores que escapan el poder expresivo de las CFGs.
+- Implementar, en el hito final, generación de código intermedio mediante LLVM.
 
 ## 4. Estructura del repositorio
 
 ```text
 TP-ANTLR_Compiladores/
-├── README.md                       # este archivo
-├── .gitignore                      # excluye artefactos generados por ANTLR
-├── grammar/                        # entregables de Hito 1
-│   ├── QueryBit.g4                 # gramática combinada (lexer + parser)
-│   ├── Makefile                    # genera el lexer y el parser en Python3
-│   ├── main.py                     # driver: tokens + árbol sintáctico + resumen
-│   ├── commands-showcase.md        # comandos para reproducir las pruebas
+├── README.md
+├── .gitignore
+├── grammar/
+│   ├── QueryBit.g4          # gramática combinada (lexer + parser)
+│   ├── Makefile             # genera lexer y parser en Python3 dentro de gen/
+│   ├── main.py              # driver: lexer -> parser -> semántico -> resumen
+│   ├── SemanticVisitor.py   # analizador semántico (visitor sobre el AST)
+│   ├── commands-showcase.md # comandos para reproducir las pruebas
+│   ├── gen/                 # artefactos generados por ANTLR (ignorados por git)
 │   └── tests/
-│       ├── entrada0.txt             # consulta verbatim  fuente
-│       ├── entrada1.txt ... entrada4.txt   # consultas válidas adicionales
-        └── error1.txt   ... error4.txt     # consultas inválidas
-
+│       ├── entrada0.txt
+│       ├── entrada1.txt ... entrada5.txt
+│       └── error1.txt   ... error5.txt
 ```
 
-## 5. Gramática (Hito 1)
+## 5. Gramática
 
 `grammar/QueryBit.g4` es una gramática combinada (lexer + parser). Reconoce:
 
-- Selección de columnas: `SELECT * | col1, col2, ...`.
+- Selección de columnas: `SELECT * | col1, col2, ...`
 - Origen de datos: ruta entre comillas (`"clientes.csv"`) o identificador.
 - Filtros booleanos con paréntesis y operadores `AND`/`OR`, con **precedencia AND > OR** (estratificación explícita en `orCondition` / `andCondition`).
 - Predicados de comparación con `>`, `<`, `==`, `!=`, `>=`, `<=`.
-- `ORDER BY col [ASC|DESC] (, col [ASC|DESC])*`.
+- `ORDER BY col [ASC|DESC], ...`
 - `LIMIT n` con literal numérico.
-- Palabras clave **insensibles a mayúsculas** (estilo SQL).
-- Comentarios de una línea con `--` y de bloque con `/* ... */` (multi-línea).
+- Palabras clave **insensibles a mayusculas** (estilo SQL).
+- Comentarios de una línea con `--` y de bloque con `/* ... */`.
+
+Todos los operadores EBNF (`?`, `*`, `+`) han sido eliminados de las reglas del parser y reemplazados con recursion explícita y producciones épsilon, para respetar el formalismo de las gramáticas libres de contexto. En las reglas del lexer si se usan operadores de Kleene, ya que el lexer opera sobre lenguajes regulares donde estos operadores son fundamentales.
 
 ### Ejemplo de consulta válida
 
@@ -68,92 +72,98 @@ ORDER BY edad DESC, nombre ASC
 LIMIT 10;
 ```
 
-## 6. Cómo ejecutar
+## 6. Analizador semántico
 
-### 6.1. Requisitos
-- **Java** (para ejecutar `antlr-4.13.1-complete.jar`).
-- **Python 3** y el runtime `antlr4-python3-runtime`; Se utiliza Python 3.11 para mayor compatibilidad.
-- **ANTLR 4.13.1** (`antlr-4.13.1-complete.jar`). El `Makefile` detecta automáticamente si existe un ejecutable `antlr4` en el `PATH` (típicamente un script o symlink) y, si no, cae al invocador `java -jar $(ANTLR_JAR)`. Por defecto `ANTLR_JAR=/usr/local/lib/antlr-4.13.1-complete.jar`; se puede sobrescribir desde la línea de comandos. *Aviso*: los aliases de shell (`alias antlr4='...'`) no se propagan a las sub-shells de `make`; para que `make` los use, deben estar instalados como ejecutables en el `PATH`.
+`grammar/SemanticVisitor.py` recorre el AST producido por el parser y válida restricciones que las CFGs no pueden expresar:
 
-#### Para Linux
+| Check | Descripción |
+|-------|-------------|
+| Columnas duplicadas en SELECT | `SELECT nombre, nombre FROM ...` es inválida |
+| Columnas duplicadas en ORDER BY | `ORDER BY edad ASC, edad DESC` es inválida |
+| Source FROM vacía | `FROM ""` no tiene sentido como ruta de archivo |
+| Operador relacional con STRING | `>`, `<`, `>=`, `<=` requieren un valor numérico |
+| LIMIT no entero o menor a 1 | `LIMIT 0`, `LIMIT 10.5` son inválidas |
 
+## 7. Cómo ejecutar
 
-##### Prerrequisitos del sistema (ejecutar solo una vez)
+### 7.1. Requisitos
 
-##### Ubuntu / Debian
+- Python 3.11
+- Java 17+ (para ejecutar el jar de ANTLR4)
+- `antlr4-python3-runtime==4.13.2`
+- ANTLR 4.13.1 (`antlr-4.13.1-complete.jar`)
+
+---
+
+### 7.2. Ubuntu (VM Oracle VirtualBox)
+
+#### Instalación de dependencias (una sola vez)
 
 ```bash
 sudo apt update
-
-sudo apt install -y \
-    python3.11 \
-    python3.11-venv \
-    openjdk-17-jdk \
-    curl
+sudo apt install -y python3.11 python3.11-venv openjdk-17-jdk curl
 ```
 
 Instalar `uv`:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Reiniciar shell o ejecutar:
+#### Configuración del proyecto (una sola vez)
+
+VBoxSF no soporta symlinks, por lo que el venv debe crearse fuera de la carpeta compartida. Se usa `~/envs/` como directorio central para todos los entornos uv:
 
 ```bash
-source $HOME/.local/bin/env
+mkdir -p ~/envs
+uv venv ~/envs/querybit --python 3.11
+source ~/envs/querybit/bin/activate
+uv pip install antlr4-python3-runtime==4.13.2 antlr4-tools==0.2.2
 ```
 
-##### `requirements.txt`
-
-```text
-antlr4-python3-runtime==4.13.2
-antlr4-tools==0.2.2
-```
-
-##### Configuración inicial del proyecto (ejecutar solo una vez)
-
-Ejecutar todo en la raíz del proyecto:
+#### Cada nueva sesión de shell
 
 ```bash
-echo "3.11" > .python-version
-
-uv venv --python 3.11
-source .venv/bin/activate
-
-uv pip install -r requirements.txt
+source ~/envs/querybit/bin/activate
+cd TP-ANTLR_Compiladores
 ```
 
-##### Activar entorno virtual (ejecutar en cada nueva sesión)
-
-```bash
-source .venv/bin/activate
-```
-
-##### Regenerar lexer/parser ANTLR
-
-Ejecutar cada vez que se modifique `QueryBit.g4`:
+#### Regenerar lexer/parser (cada vez que se modifique `QueryBit.g4`)
 
 ```bash
 cd grammar
-antlr4 -Dlanguage=Python3 QueryBit.g4
+make
 ```
 
-##### Ejecutar pruebas
+Invoca `java -jar /usr/local/lib/antlr-4.13.1-complete.jar` directamente. Si el jar no esta en esa ruta, descargarlo con:
+
+```bash
+curl -o /usr/local/lib/antlr-4.13.1-complete.jar \
+  https://www.antlr.org/download/antlr-4.13.1-complete.jar
+```
+
+Los archivos generados se localizan en `grammar/gen/`.
+
+#### Ejecutar pruebas
 
 ```bash
 cd grammar
-
-for f in tests/entrada*.txt tests/error*.txt; do
-    echo "===== $(basename "$f") ====="
-    python3 main.py "$f"
-done
+export PYTHONPATH=gen
+python3 main.py tests/entrada1.txt
 ```
 
-#### Para Windows
+Para todos los casos en un comando oneliner:
 
+```bash
+echo "━━━━━━━━━━ ENTRADAS VÁLIDAS ━━━━━━━━━━" && for f in tests/entrada*.txt; do echo "  ▒▒ $(basename $f)"; python3 main.py "$f"; echo; done && echo "━━━━━━━━━━ ERRORES SINTÁCTICOS ━━━━━━━━━━" && for f in tests/sint_error*.txt; do echo "  ▒▒ $(basename $f)"; python3 main.py "$f"; echo; done && echo "━━━━━━━━━━ ERRORES SEMÁNTICOS ━━━━━━━━━━" && for f in tests/sem_error*.txt; do echo "  ▒▒ $(basename $f)"; python3 main.py "$f"; echo; done
+```
 
-##### Prerrequisitos del sistema (ejecutar solo una vez)
+---
+
+### 7.3. Windows (PowerShell)
+
+#### Instalación de dependencias (una sola vez)
 
 ```powershell
 winget install Python.Python.3.11
@@ -161,155 +171,96 @@ winget install EclipseAdoptium.Temurin.17.JDK
 winget install astral-sh.uv
 ```
 
-##### `requirements.txt`
+#### Configuración del proyecto (una sola vez)
 
-```text
-antlr4-python3-runtime==4.13.2
-antlr4-tools==0.2.2
-```
-
-##### Configuración inicial del proyecto (ejecutar solo una vez)
-
-Ejecutar todo en la raíz del proyecto:
+Desde la raíz del proyecto:
 
 ```powershell
+cd TP-ANTLR_Compiladores
 '3.11' | Out-File .python-version
-
 uv venv --python 3.11
 .\.venv\Scripts\Activate.ps1
-
-uv pip install -r requirements.txt
+uv pip install antlr4-python3-runtime==4.13.2 antlr4-tools==0.2.2
 ```
 
-##### Activar entorno virtual (ejecutar en cada nueva sesión de shell)
+#### Cada nueva sesión de PowerShell
 
 ```powershell
+cd TP-ANTLR_Compiladores
 .\.venv\Scripts\Activate.ps1
 ```
 
-##### Regenerar lexer/parser ANTLR
-
-Ejecutar cada vez que se modifique `QueryBit.g4`:
+#### Regenerar lexer/parser (cada vez que se modifique `QueryBit.g4`)
 
 ```powershell
 cd grammar
-antlr4 -Dlanguage=Python3 QueryBit.g4
+java -jar C:\ruta\a\antlr-4.13.1-complete.jar -Dlanguage=Python3 -o gen QueryBit.g4
 ```
 
-##### Ejecutar pruebas
+Si `antlr4` está disponible como comando en el PATH:
+
+```powershell
+antlr4 -Dlanguage=Python3 -o gen QueryBit.g4
+```
+
+#### Ejecutar pruebas
 
 ```powershell
 cd grammar
-
-gci tests\entrada*.txt, tests\error*.txt | % {
-    Write-Host "===== $($_.Name) ====="
-    python3 main.py $_.FullName
-}
+$env:PYTHONPATH = "gen"
+python main.py tests\entrada1.txt
 ```
 
-
-
-### 6.2. Generar lexer y parser
-
-En Linux/macOS:
-
-```bash
-cd grammar
-make
-```
-
-En Windows (PowerShell):
+Para todos los casos en un comando oneliner:
 
 ```powershell
-cd grammar
-java -jar C:\ruta\a\antlr-4.13.1-complete.jar -Dlanguage=Python3 QueryBit.g4
+Write-Host "━━━━━━━━━━ ENTRADAS VÁLIDAS ━━━━━━━━━━"; gci tests\entrada*.txt | % { Write-Host "  ▒▒ $($_.Name)"; python main.py $_.FullName; "" }; Write-Host "━━━━━━━━━━ ERRORES SINTÁCTICOS ━━━━━━━━━━"; gci tests\sint_error*.txt | % { Write-Host "  ▒▒ $($_.Name)"; python main.py $_.FullName; "" }; Write-Host "━━━━━━━━━━ ERRORES SEMÁNTICOS ━━━━━━━━━━"; gci tests\sem_error*.txt | % { Write-Host "  ▒▒ $($_.Name)"; python main.py $_.FullName; "" }
 ```
 
-### 6.3. Ejecutar el driver
+---
 
-```bash
-python3 main.py tests/entrada1.txt    # consulta válida; imprime tokens, árbol y resumen
-python3 main.py tests/error1.txt      # consulta inválida; el resumen reporta errores
+### 7.4. Output del driver
+
+Para una entrada válida:
+
+```
+Errores sintácticos:   ninguno
+
+Errores semánticos:    ninguno
+
+Consultas: 1  |  Total errores: 0  |  Estado: OK
 ```
 
-Por cada archivo procesado, el driver emite tres bloques:
+Para una entrada con errores:
 
-1. **Tokens**: tabla `TIPO | TEXTO` con cada token producido por el lexer (omite `EOF`).
-2. **Arbol sintactico**: representación textual del árbol mediante `toStringTree`.
-3. **Resumen**: número de consultas reconocidas (`tree.query()`), número de errores sintácticos (`parser.getNumberOfSyntaxErrors()`) y un estado `OK` o `con errores`.
+```
+Errores sintácticos (1):
+  [linea 2, col 0] mismatched input '<EOF>' expecting SEMI
 
-## 7. Casos de prueba
+Errores semánticos:    ninguno
 
-Los casos de prueba viven en `grammar/tests/`. Cada archivo cubre una característica distinta de la gramática. Los `entradaN.txt` deben parsear correctamente; los `errorN.txt` deben fallar de manera predecible.
+Consultas: 1  |  Total errores: 1  |  Estado: con errores
+```
 
-### 7.1. Resumen de cada caso
+## 8. Casos de prueba
 
-| Archivo | Tipo | Característica que valida |
+Los casos de prueba viven en `grammar/tests/`. Los `entradaN.txt` deben parsear y pasar el analizador semántico sin errores. Los `sint_errorN.txt` deben fallar con error sintáctico. Los `sem_errorN.txt` deben fallar con error semántico.
+
+| Archivo | Tipo | Característica que válida |
 |---------|------|---------------------------|
-| `tests/entrada1.txt` | válido | Forma mínima: `SELECT * FROM "ruta.csv";` y comentario de línea con `--`. |
-| `tests/entrada2.txt` | válido | `WHERE` con combinación `AND`/`OR`; ejercita la precedencia AND > OR. |
-| `tests/entrada3.txt` | válido | `WHERE` + `ORDER BY` multi-columna con `ASC`/`DESC` + `LIMIT`. |
-| `tests/entrada4.txt` | válido | Múltiples consultas en un mismo archivo, paréntesis en `WHERE`, palabras clave mezcladas en mayúsculas/minúsculas, número decimal. |
-| `tests/error1.txt`   | inválido | Falta el `;` final; el parser exige `SEMI` para cerrar la consulta. |
-| `tests/error2.txt`   | inválido | Operador `=` no soportado; la gramática usa `==` para igualdad. |
-| `tests/error3.txt`   | inválido | `ORDER` sin `BY`; la gramática exige la pareja `ORDER BY`. |
-| `tests/error4.txt`   | inválido | Identificador inválido (`1columna`); los `ID` no pueden iniciar con dígito. |
-
-### 7.2. Comandos
-
-Ejecutar primero la generación del lexer y parser (sección 6.2), luego, desde subcarpeta `grammar/`:
-
-```bash
-# ----- entradas válidas -----
-
-# entrada0: consulta verbatim del informe fuente
-python3 main.py tests/entrada0.txt
-
-# entrada1: SELECT * mínimo + comentario '--'
-python3 main.py tests/entrada1.txt
-
-# entrada2: WHERE con AND/OR (precedencia AND > OR)
-python3 main.py tests/entrada2.txt
-
-# entrada3: ORDER BY multi-columna + LIMIT
-python3 main.py tests/entrada3.txt
-
-# entrada4: múltiples consultas, paréntesis, mayúsculas/minúsculas mezcladas
-python3 main.py tests/entrada4.txt
-
-
-# ----- entradas inválidas (deben reportar error de parseo) -----
-
-# error1: falta ';' al cierre
-python3 main.py tests/error1.txt
-
-# error2: operador '=' no aceptado (la gramática exige '==')
-python3 main.py tests/error2.txt
-
-# error3: 'ORDER' sin 'BY'
-python3 main.py tests/error3.txt
-
-# error4: identificador que comienza con dígito
-python3 main.py tests/error4.txt
-
-```
-
-Para una ejecución secuencial de todos los casos:
-
-```bash
-# Linux / macOS / Git Bash
-for f in tests/entrada*.txt tests/error*.txt; do
-  echo "===== $f ====="
-  python3 main.py "$f"
-done
-```
-
-```powershell
-# PowerShell
-gci tests\entrada*.txt, tests\error*.txt | % {
-  Write-Host "===== $($_.Name) ====="
-  python3 main.py $_.FullName
-}
-```
-
-El mismo listado, con explicaciones detalladas, está en [`grammar/commands-showcase.md`](grammar/commands-showcase.md).
+| `entrada0.txt`    | válida | Forma mínima: `SELECT * FROM "ruta.csv";` |
+| `entrada1.txt`    | válida | `WHERE` con `AND`/`OR` y comentario `--` |
+| `entrada2.txt`    | válida | Precedencia AND > OR |
+| `entrada3.txt`    | válida | `ORDER BY` multi-columna + `LIMIT` |
+| `entrada4.txt`    | válida | Múltiples consultas, paréntesis, palabras clave en mayusculas/minusculas mezcladas |
+| `entrada5.txt`    | válida | Comentarios de bloque `/* ... */` multi-línea |
+| `sint_error1.txt` | error sintáctico | Falta el `;` final |
+| `sint_error2.txt` | error sintáctico | Operador `=` no soportado (se requiere `==`) |
+| `sint_error3.txt` | error sintáctico | `ORDER` sin `BY` |
+| `sint_error4.txt` | error sintáctico | Identificador que comienza con dígito |
+| `sint_error5.txt` | error sintáctico | Comentario de bloque sin cerrar |
+| `sem_error1.txt`  | error semántico | Columna duplicada en SELECT |
+| `sem_error2.txt`  | error semántico | Operador relacional `>` con valor STRING |
+| `sem_error3.txt`  | error semántico | LIMIT con valor decimal |
+| `sem_error4.txt`  | error semántico | Columna duplicada en ORDER BY |
+| `sem_error5.txt`  | error semántico | Ruta FROM vacía |
