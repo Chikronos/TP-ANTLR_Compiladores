@@ -2,6 +2,7 @@ import sys
 from antlr4 import CommonTokenStream, FileStream, Token
 from QueryBitLexer import QueryBitLexer
 from QueryBitParser import QueryBitParser
+from SemanticVisitor import SemanticVisitor
 
 
 def imprimir_tokens(stream):
@@ -50,12 +51,32 @@ def main():
     ##print()
 
     # 3) Resumen: numero de consultas reconocidas y de errores sintacticos.
-    n_errors  = parser.getNumberOfSyntaxErrors()
-    n_queries = contar_queries(tree) if tree is not None else 0
+    n_sintacticos = parser.getNumberOfSyntaxErrors()
+    n_queries     = contar_queries(tree) if tree is not None else 0
+
+    # 4) Analisis semantico (solo si no hay errores sintacticos).
+    errores_sem = []
+    if n_sintacticos == 0 and tree is not None:
+        visitor = SemanticVisitor()
+        errores_sem = visitor.analizar(tree)
+
     print("Resumen:")
     print(f"  Consultas reconocidas: {n_queries}")
-    print(f"  Errores sintacticos:   {n_errors}")
-    print(f"  Estado:                {'OK' if n_errors == 0 else 'con errores'}")
+    print(f"  Errores sintacticos:   {n_sintacticos}")
+    print(f"  Errores semanticos:    {len(errores_sem)}")
+
+    if errores_sem:
+        print()
+        print("Errores semanticos encontrados:")
+        for e in errores_sem:
+            print(e)
+
+    print()
+    ok = n_sintacticos == 0 and len(errores_sem) == 0
+    print(f"  Estado: {'OK' if ok else 'con errores'}")
+
+    if not ok:
+        sys.exit(1)
 
 
 main()
