@@ -1,0 +1,2 @@
+-- Error semantico: operador relacional '>' con valor STRING
+SELECT nombre FROM "clientes.csv" WHERE nombre > "Pedro";

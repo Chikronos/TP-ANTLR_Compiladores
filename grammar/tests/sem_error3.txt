@@ -1,0 +1,2 @@
+-- Error semantico: LIMIT con valor decimal
+SELECT nombre FROM "clientes.csv" LIMIT 2.5;

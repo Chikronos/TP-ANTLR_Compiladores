@@ -1,0 +1,2 @@
+-- Error semantico: columna duplicada en ORDER BY
+SELECT nombre, edad FROM "clientes.csv" ORDER BY edad ASC, edad DESC;

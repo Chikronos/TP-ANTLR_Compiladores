@@ -1,0 +1,2 @@
+-- Error semantico: columna duplicada en SELECT
+SELECT nombre, edad, nombre FROM "clientes.csv";
