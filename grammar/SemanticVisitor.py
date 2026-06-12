@@ -12,7 +12,6 @@ class SemanticVisitor(QueryBitVisitor):
     # ---------- helpers ----------
 
     def _recolectar_columnas_select(self, ctx):
-        # ctx: columnList. Devuelve lista de (nombre, linea).
         nombres = []
         nombres.append((ctx.column().ID().getText(), ctx.column().start.line))
         rest = ctx.columnRest()
@@ -22,7 +21,6 @@ class SemanticVisitor(QueryBitVisitor):
         return nombres
 
     def _recolectar_columnas_order(self, ctx):
-        # ctx: orderList. Devuelve lista de (nombre, linea).
         nombres = []
         nombres.append((ctx.orderItem().ID().getText(), ctx.orderItem().start.line))
         rest = ctx.orderRest()
@@ -34,22 +32,22 @@ class SemanticVisitor(QueryBitVisitor):
     # ---------- program / queryList ----------
 
     def visitProgram(self, ctx):
-        self.visit(ctx.query())
-        self.visit(ctx.queryList())
+        self.visitQuery(ctx.query())
+        self.visitQueryList(ctx.queryList())
 
     def visitQueryList(self, ctx):
         if ctx.query() is not None:
-            self.visit(ctx.query())
-            self.visit(ctx.queryList())
+            self.visitQuery(ctx.query())
+            self.visitQueryList(ctx.queryList())
 
     # ---------- query ----------
 
     def visitQuery(self, ctx):
-        self.visit(ctx.columnList())
-        self.visit(ctx.source())
-        self.visit(ctx.optWhere())
-        self.visit(ctx.optOrder())
-        self.visit(ctx.optLimit())
+        self.visitColumnList(ctx.columnList())
+        self.visitSource(ctx.source())
+        self.visitOptWhere(ctx.optWhere())
+        self.visitOptOrder(ctx.optOrder())
+        self.visitOptLimit(ctx.optLimit())
 
     # ---------- columnList ----------
 
@@ -60,58 +58,52 @@ class SemanticVisitor(QueryBitVisitor):
         vistos = set()
         for nombre, linea in nombres:
             if nombre in vistos:
-                self._error(linea, f"columna duplicada en SELECT: '{nombre}'")
+                self._error(linea, f"columna duplicada en SELECT: '{nombre}'.")
             vistos.add(nombre)
-
-    def visitColumnRest(self, ctx):
-        pass
-
-    def visitColumn(self, ctx):
-        pass
 
     # ---------- source ----------
 
     def visitSource(self, ctx):
         if ctx.STRING() is None:
             return
-        texto   = ctx.STRING().getText()
+        texto    = ctx.STRING().getText()
         interior = texto[1:-1]
         if interior.strip() == '':
             self._error(ctx.start.line,
-                "la ruta del archivo en FROM no puede estar vacia")
+                "la ruta del archivo en FROM no puede estar vacía.")
 
     # ---------- condiciones ----------
 
     def visitOptWhere(self, ctx):
         if ctx.WHERE() is not None:
-            self.visit(ctx.condition())
+            self.visitCondition(ctx.condition())
 
     def visitCondition(self, ctx):
-        self.visit(ctx.orCondition())
+        self.visitOrCondition(ctx.orCondition())
 
     def visitOrCondition(self, ctx):
-        self.visit(ctx.andCondition())
-        self.visit(ctx.orRest())
+        self.visitAndCondition(ctx.andCondition())
+        self.visitOrRest(ctx.orRest())
 
     def visitOrRest(self, ctx):
         if ctx.OR() is not None:
-            self.visit(ctx.andCondition())
-            self.visit(ctx.orRest())
+            self.visitAndCondition(ctx.andCondition())
+            self.visitOrRest(ctx.orRest())
 
     def visitAndCondition(self, ctx):
-        self.visit(ctx.primaryCondition())
-        self.visit(ctx.andRest())
+        self.visitPrimaryCondition(ctx.primaryCondition())
+        self.visitAndRest(ctx.andRest())
 
     def visitAndRest(self, ctx):
         if ctx.AND() is not None:
-            self.visit(ctx.primaryCondition())
-            self.visit(ctx.andRest())
+            self.visitPrimaryCondition(ctx.primaryCondition())
+            self.visitAndRest(ctx.andRest())
 
     def visitPrimaryCondition(self, ctx):
         if ctx.predicate() is not None:
-            self.visit(ctx.predicate())
+            self.visitPredicate(ctx.predicate())
         else:
-            self.visit(ctx.condition())
+            self.visitCondition(ctx.condition())
 
     def visitPredicate(self, ctx):
         op_ctx  = ctx.compOp()
@@ -125,14 +117,8 @@ class SemanticVisitor(QueryBitVisitor):
         if es_relacional and es_string:
             col = ctx.ID().getText()
             self._error(linea,
-                f"el operador '{op}' no es valido con STRING "
-                f"en '{col} {op} {val_ctx.getText()}'")
-
-    def visitCompOp(self, ctx):
-        pass
-
-    def visitValue(self, ctx):
-        pass
+                f"el operador '{op}' no es válido con STRING "
+                f"en '{col} {op} {val_ctx.getText()}'.")
 
     # ---------- ORDER BY ----------
 
@@ -143,20 +129,8 @@ class SemanticVisitor(QueryBitVisitor):
         vistos  = set()
         for nombre, linea in nombres:
             if nombre in vistos:
-                self._error(linea, f"columna duplicada en ORDER BY: '{nombre}'")
+                self._error(linea, f"columna duplicada en ORDER BY: '{nombre}'.")
             vistos.add(nombre)
-
-    def visitOrderList(self, ctx):
-        pass
-
-    def visitOrderRest(self, ctx):
-        pass
-
-    def visitOrderItem(self, ctx):
-        pass
-
-    def visitOrderDir(self, ctx):
-        pass
 
     # ---------- LIMIT ----------
 
@@ -169,13 +143,13 @@ class SemanticVisitor(QueryBitVisitor):
 
         if '.' in texto:
             self._error(linea,
-                f"LIMIT debe ser un entero positivo, no decimal: '{texto}'")
+                f"LIMIT debe ser un entero positivo, no decimal: '{texto}'.")
         elif int(texto) <= 0:
             self._error(linea,
-                f"LIMIT debe ser mayor a 0, se encontro: '{texto}'")
+                f"LIMIT debe ser mayor a 0, se encontró: '{texto}'.")
 
-    # ---------- interfaz publica ----------
+    # ---------- interfaz pública ----------
 
     def analizar(self, tree):
-        self.visit(tree)
+        self.visitProgram(tree)
         return self.errores
