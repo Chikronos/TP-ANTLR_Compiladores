@@ -4,3 +4,6 @@ grammar/gen/
 !grammar/QueryBit.g4
 docs/
 *.html
+# Python cache
+**/__pycache__/
+*.pyc
